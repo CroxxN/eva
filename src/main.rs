@@ -9,7 +9,15 @@ fn main() {
         eprintln!("\x1b[1;31mError: Missing file name.\x1b[0m");
         return;
     }
-    let file = File::open(&args[1]).unwrap();
+
+    let file = match File::open(&args[1]) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
+
     let mut file_buf = BufReader::new(file);
     let mut file_contents = Vec::new();
     let _file_size = if let Ok(s) = file_buf.read_to_end(&mut file_contents) {
@@ -18,8 +26,7 @@ fn main() {
         eprintln!("\x1b[1;31mError: Cann't read the file\x1b[0m");
         return;
     };
-    //128  64 32 16 8 4 2 1
-    //     1        1   1    49
+    // 0x7f, E, L, F
     if file_contents[0] == 0x7f
         && file_contents[1] == 0x45
         && file_contents[2] == 0x4C
