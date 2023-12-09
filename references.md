@@ -1,0 +1,2 @@
+- [ELF wiki](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
+- [System V ABI Generic Specification](http://www.sco.com/developers/devspecs/gabi41.pdf)
