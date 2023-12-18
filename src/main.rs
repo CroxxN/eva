@@ -23,6 +23,26 @@ struct ELFHeader {
     ei_type: u16,
     // specific target instruction set arch
     ei_machine: u16,
+    // mem address of the entry point from where the program starts executing
+    ei_entry: u64,
+    // pointing to the start of the program header
+    ei_phoff: u64,
+    // points to the start of the section header. Absolute offset into the file
+    ei_shoff: u64,
+    // platform dependent flags
+    ei_flags: u32,
+    // size of elf header
+    ei_ehsize: u16,
+    // size of program header
+    ei_phentsize: u16,
+    // number of program headers
+    ei_phnum: u16,
+    // size of section headers
+    ei_shentsize: u16,
+    // number of section headers
+    ei_shnum: u16,
+    // index of the section header table entry that contains the section names
+    ei_shstrndx: u16,
 }
 
 fn main() {
@@ -67,11 +87,14 @@ fn main() {
         return;
     }
     let mut elf_hdr = ELFHeader::default();
+    let step: usize;
     if file_contents[4] == 1 {
         elf_hdr.ei_class = 1;
+        step = 4;
         println!("\x1b[1;32mELF bit: \x1b[37m32-bit\x1b[0m");
     } else {
         elf_hdr.ei_class = 2;
+        step = 8;
         println!("\x1b[1;32mELF bit: \x1b[37m64-bit\x1b[0m");
     }
     if file_contents[5] == 1 {
@@ -182,24 +205,123 @@ fn main() {
         _ => println!("Unspecified/Unknown"),
     }
     print!("\x1b[0m");
-    println!("\x1b[1;32mELF Version:\x1b[0m {}\x1b[1m", file_contents[20]);
+    println!(
+        "\x1b[1;32mELF Version:\x1b[0m {}\x1b[1m",
+        file_contents[20] | file_contents[23] // to work with both big endian and little endian
+    );
 
-    let mut cursor = 21_usize;
-    let mem_addr = if elf_hdr.ei_class == 1 {
-        cursor += 4;
-        if elf_hdr.ei_data == 2 {
-            u32::from_big_bytes(&file_contents[cursor..cursor + 4]) as u64
-        } else {
-            u32::from_little_bytes(&file_contents[cursor..cursor + 4]) as u64
-        }
+    let mut cursor = 24_usize;
+    // elf_hdr.ei_entry = if elf_hdr.ei_class == 1 {
+    //     cursor += 4;
+    //     if elf_hdr.ei_data == 2 {
+    //         u32::from_big_bytes(&file_contents[(cursor - 4)..cursor]) as u64
+    //     } else {
+    //         u32::from_little_bytes(&file_contents[(cursor - 4)..cursor]) as u64
+    //     }
+    // } else {
+    //     cursor += 8;
+    //     if elf_hdr.ei_data == 2 {
+    //         u64::from_big_bytes(&file_contents[(cursor - 8)..cursor])
+    //     } else {
+    //         u64::from_little_bytes(&file_contents[(cursor - 8)..cursor])
+    //     }
+    // };
+    elf_hdr.ei_entry = if elf_hdr.ei_data == 2 {
+        u64::from_big_bytes(&file_contents[cursor..(cursor + step)])
     } else {
-        cursor += 8;
-        if elf_hdr.ei_data == 2 {
-            u64::from_big_bytes(&file_contents[cursor..cursor + 8])
-        } else {
-            u64::from_little_bytes(&file_contents[cursor..cursor + 8])
-        }
+        u64::from_little_bytes(&file_contents[cursor..(cursor + step)])
     };
-
-    println!("\x1b[1;32mStarting Address:\x1b[0m {:x}\x1b[1m", mem_addr);
+    cursor += step;
+    println!(
+        "\x1b[1;32mStarting Address:\x1b[0m {:#x}\x1b[1m",
+        elf_hdr.ei_entry
+    );
+    elf_hdr.ei_phoff = if elf_hdr.ei_data == 2 {
+        u64::from_big_bytes(&file_contents[cursor..(cursor + step)])
+    } else {
+        u64::from_little_bytes(&file_contents[cursor..(cursor + step)])
+    };
+    println!(
+        "\x1b[1;32mProgram header table start:\x1b[0m {}(Absolute)\x1b[1m",
+        elf_hdr.ei_phoff
+    );
+    cursor += step;
+    elf_hdr.ei_shoff = if elf_hdr.ei_data == 2 {
+        u64::from_big_bytes(&file_contents[cursor..(cursor + step)])
+    } else {
+        u64::from_little_bytes(&file_contents[cursor..(cursor + step)])
+    };
+    println!(
+        "\x1b[1;32mSection header table start:\x1b[0m {}(Absolute)\x1b[1m",
+        elf_hdr.ei_shoff
+    );
+    cursor += step;
+    elf_hdr.ei_flags = if elf_hdr.ei_data == 2 {
+        u32::from_big_bytes(&file_contents[cursor..(cursor + 4)])
+    } else {
+        u32::from_little_bytes(&file_contents[cursor..(cursor + 4)])
+    };
+    println!("\x1b[1;32mFlags:\x1b[0m {:#x}\x1b[1m", elf_hdr.ei_flags);
+    cursor += 4;
+    elf_hdr.ei_ehsize = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mELF Header Size:\x1b[0m {} bytes\x1b[1m",
+        elf_hdr.ei_ehsize
+    );
+    cursor += 2;
+    elf_hdr.ei_phentsize = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mProgram Header Size:\x1b[0m {} bytes\x1b[1m",
+        elf_hdr.ei_phentsize
+    );
+    cursor += 2;
+    elf_hdr.ei_phnum = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mNumber of program headers:\x1b[0m {}\x1b[1m",
+        elf_hdr.ei_phnum
+    );
+    cursor += 2;
+    elf_hdr.ei_shentsize = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mSize of section headers:\x1b[0m {} bytes\x1b[1m",
+        elf_hdr.ei_shentsize
+    );
+    cursor += 2;
+    elf_hdr.ei_shnum = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mNumber of section headers:\x1b[0m {}\x1b[1m",
+        elf_hdr.ei_shnum
+    );
+    cursor += 2;
+    elf_hdr.ei_shstrndx = if elf_hdr.ei_data == 2 {
+        u16::from_big_bytes(&file_contents[cursor..(cursor + 2)])
+    } else {
+        u16::from_little_bytes(&file_contents[cursor..(cursor + 2)])
+    };
+    println!(
+        "\x1b[1;32mIndex of section headers:\x1b[0m {}\x1b[1m",
+        elf_hdr.ei_shstrndx
+    );
+    cursor += 2;
+    _ = cursor; // IMPORTANT: Comment this line
 }

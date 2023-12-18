@@ -22,10 +22,16 @@ impl ValidNums for u32 {
 }
 impl ValidNums for u64 {
     fn from_big_bytes(seq: &[u8]) -> Self {
-        Self::from_be_bytes(seq[..8 as usize].try_into().unwrap())
+        if seq.len() == 4 {
+            return u32::from_be_bytes(seq[..seq.len()].try_into().unwrap()) as u64;
+        }
+        Self::from_be_bytes(seq[..seq.len()].try_into().unwrap())
     }
     fn from_little_bytes(seq: &[u8]) -> Self {
-        Self::from_le_bytes(seq[..8 as usize].try_into().unwrap())
+        if seq.len() == 4 {
+            return u32::from_le_bytes(seq[..seq.len()].try_into().unwrap()) as u64;
+        }
+        Self::from_le_bytes(seq[..seq.len()].try_into().unwrap())
     }
 }
 
