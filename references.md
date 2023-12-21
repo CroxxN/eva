@@ -1,2 +1,3 @@
 - [ELF wiki](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
 - [System V ABI Generic Specification](http://www.sco.com/developers/devspecs/gabi41.pdf)
+- [ELF Supplement](http://downloads.openwatcom.org/ftp/devel/docs/elf-64-gen.pdf)

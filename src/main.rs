@@ -323,5 +323,37 @@ fn main() {
         elf_hdr.ei_shstrndx
     );
     cursor += 2;
+    cursor += 56; // second program header (Readable) 0x4
+    cursor += 56; // third program header (Exec + Read) 0x5
+                  // cursor += 56; // fourth program header (Readable) 0x4
+                  // cursor += 56; // fifth program header (Readable and Writable) 0x6
+                  // cursor += 56; // fifth program header (Readable and Writable) 0x6
+    println!("exec");
+    let type_ph = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
+    cursor += 4;
+
+    let mut flags = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
+    cursor += 4; // resetting
+
+    // while flags != 0x5 {
+    //     cursor += 48; // 56 - 8
+    //     cursor += 4;
+    //     flags = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
+    //     cursor += 4;
+    // }
+    dbg!(cursor);
+    println!("\x1b[1;32mFlag:\x1b[0m {:#x}\x1b[1m", flags);
+    println!("Program header type: {:#x}", type_ph); // works
+    let mut ph_offset = if elf_hdr.ei_data == 2 {
+        u64::from_big_bytes(&file_contents[cursor..(cursor + step)]) as usize
+    } else {
+        u64::from_little_bytes(&file_contents[cursor..(cursor + step)]) as usize
+    };
+    println!(
+        "\x1b[1;32mprogram segment offset:\x1b[0m {}\x1b[1m",
+        ph_offset
+    );
+    ph_offset += 16;
+    cursor += step;
     _ = cursor; // IMPORTANT: Comment this line
 }
