@@ -211,21 +211,7 @@ fn main() {
     );
 
     let mut cursor = 24_usize;
-    // elf_hdr.ei_entry = if elf_hdr.ei_class == 1 {
-    //     cursor += 4;
-    //     if elf_hdr.ei_data == 2 {
-    //         u32::from_big_bytes(&file_contents[(cursor - 4)..cursor]) as u64
-    //     } else {
-    //         u32::from_little_bytes(&file_contents[(cursor - 4)..cursor]) as u64
-    //     }
-    // } else {
-    //     cursor += 8;
-    //     if elf_hdr.ei_data == 2 {
-    //         u64::from_big_bytes(&file_contents[(cursor - 8)..cursor])
-    //     } else {
-    //         u64::from_little_bytes(&file_contents[(cursor - 8)..cursor])
-    //     }
-    // };
+
     elf_hdr.ei_entry = if elf_hdr.ei_data == 2 {
         u64::from_big_bytes(&file_contents[cursor..(cursor + step)])
     } else {
@@ -323,37 +309,54 @@ fn main() {
         elf_hdr.ei_shstrndx
     );
     cursor += 2;
-    cursor += 56; // second program header (Readable) 0x4
-    cursor += 56; // third program header (Exec + Read) 0x5
-                  // cursor += 56; // fourth program header (Readable) 0x4
-                  // cursor += 56; // fifth program header (Readable and Writable) 0x6
-                  // cursor += 56; // fifth program header (Readable and Writable) 0x6
-    println!("exec");
-    let type_ph = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
+
+    // End of ELF-header
+
+    let mut type_ph = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
     cursor += 4;
 
     let mut flags = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
     cursor += 4; // resetting
 
-    // while flags != 0x5 {
-    //     cursor += 48; // 56 - 8
-    //     cursor += 4;
-    //     flags = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
-    //     cursor += 4;
-    // }
-    dbg!(cursor);
+    cursor -= 8;
+    let mut ph_count = 1;
+
+    // finding loadable segment
+    while flags != 0x5 || type_ph != 0x1 {
+        ph_count += 1;
+        if ph_count > elf_hdr.ei_phnum {
+            eprintln!("\x1b[31mELF doesn't contain loadable segments. Maybe this ELF is a relocatable with only sections\x1b[0m");
+            return;
+        }
+        cursor += 56;
+        type_ph = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
+        flags = u32::from_little_bytes(&file_contents[(cursor + 4)..(cursor + 8)]);
+    }
+
+    cursor += 8; // as flag and header type are already consumed
+
+    println!(
+        "\x1b[1;32mProgram header type: \x1b[0m\x1b[1m{:#x}\x1b[0m",
+        type_ph
+    ); // works
     println!("\x1b[1;32mFlag:\x1b[0m {:#x}\x1b[1m", flags);
-    println!("Program header type: {:#x}", type_ph); // works
-    let mut ph_offset = if elf_hdr.ei_data == 2 {
+
+    let ph_offset = if elf_hdr.ei_data == 2 {
         u64::from_big_bytes(&file_contents[cursor..(cursor + step)]) as usize
     } else {
         u64::from_little_bytes(&file_contents[cursor..(cursor + step)]) as usize
     };
     println!(
-        "\x1b[1;32mprogram segment offset:\x1b[0m {}\x1b[1m",
+        "\x1b[1;32mprogram segment offset:\x1b[0m \x1b[1m{}",
         ph_offset
     );
-    ph_offset += 16;
-    cursor += step;
+    // cursor += step;
+
+    _ = ph_offset;
     _ = cursor; // IMPORTANT: Comment this line
+}
+
+fn _disassemble_elf(exec_section: &[u8]) {
+    _ = exec_section;
+    todo!()
 }
