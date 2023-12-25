@@ -45,6 +45,25 @@ struct ELFHeader {
     ei_shstrndx: u16,
 }
 
+impl ELFHeader {
+    fn from_bytes() {}
+}
+
+#[derive(Default)]
+// aligned to u64 to accomodate both ELF32 and ELF64 program
+// headers
+struct Pheader {
+    p_type: u32,
+    // different location for 32-bit and 64-bit ELF
+    p_flags: u32,
+    p_offset: u64,
+    p_vaddr: u64,
+    p_paddr: u64,
+    p_filesz: u64,
+    p_memsz: u64,
+    p_align: u64,
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
@@ -312,6 +331,8 @@ fn main() {
 
     // End of ELF-header
 
+    let phead = parse_pheader64(&file_contents[cursor..(cursor + elf_hdr.ei_phentsize as usize)]);
+
     let mut type_ph = u32::from_little_bytes(&file_contents[cursor..(cursor + 4)]);
     cursor += 4;
 
@@ -347,13 +368,45 @@ fn main() {
         u64::from_little_bytes(&file_contents[cursor..(cursor + step)]) as usize
     };
     println!(
-        "\x1b[1;32mprogram segment offset:\x1b[0m \x1b[1m{}",
+        "\x1b[1;32mProgram segment offset:\x1b[0m \x1b[1m{}",
         ph_offset
     );
     // cursor += step;
-
     _ = ph_offset;
     _ = cursor; // IMPORTANT: Comment this line
+}
+
+fn parse_pheader64(slice: &[u8]) -> Pheader {
+    let mut cursor = 0;
+    let mut pheader = Pheader::default();
+
+    pheader.p_type = u32::from_little_bytes(&slice[cursor..(cursor + 4)]);
+
+    cursor += 4;
+
+    pheader.p_flags = u32::from_little_bytes(&slice[cursor..(cursor + 4)]);
+
+    cursor += 4;
+
+    pheader.p_offset = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+
+    cursor += 8;
+
+    pheader.p_vaddr = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+    cursor += 8;
+
+    pheader.p_paddr = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+    cursor += 8;
+
+    pheader.p_filesz = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+    cursor += 8;
+
+    pheader.p_memsz = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+    cursor += 8;
+
+    pheader.p_align = u64::from_little_bytes(&slice[cursor..(cursor + 8)]);
+
+    pheader
 }
 
 fn _disassemble_elf(exec_section: &[u8]) {
