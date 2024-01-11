@@ -6,63 +6,11 @@ use std::{
 
 mod utils;
 use utils::ValidNums;
+mod parse;
+use parse::{ELFHeader, ELFParser, Pheader};
 
-#[derive(Default)]
-struct ELFHeader {
-    // 32 or 64 bit
-    ei_class: u8,
-    // endianess of the elf
-    ei_data: u8,
-    // ELF version
-    ei_version: u8,
-    // target os-abi
-    ei_osabi: u8,
-    // further specification about the ABI version
-    ei_abiversion: u8,
-    // type of obj/elf file.
-    ei_type: u16,
-    // specific target instruction set arch
-    ei_machine: u16,
-    // mem address of the entry point from where the program starts executing
-    ei_entry: u64,
-    // pointing to the start of the program header
-    ei_phoff: u64,
-    // points to the start of the section header. Absolute offset into the file
-    ei_shoff: u64,
-    // platform dependent flags
-    ei_flags: u32,
-    // size of elf header
-    ei_ehsize: u16,
-    // size of program header
-    ei_phentsize: u16,
-    // number of program headers
-    ei_phnum: u16,
-    // size of section headers
-    ei_shentsize: u16,
-    // number of section headers
-    ei_shnum: u16,
-    // index of the section header table entry that contains the section names
-    ei_shstrndx: u16,
-}
-
-impl ELFHeader {
-    fn from_bytes() {}
-}
-
-#[derive(Default)]
-// aligned to u64 to accomodate both ELF32 and ELF64 program
-// headers
-struct Pheader {
-    p_type: u32,
-    // different location for 32-bit and 64-bit ELF
-    p_flags: u32,
-    p_offset: u64,
-    p_vaddr: u64,
-    p_paddr: u64,
-    p_filesz: u64,
-    p_memsz: u64,
-    p_align: u64,
-}
+mod error;
+use error::ParseError;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -93,7 +41,8 @@ fn main() {
         println!("\x1b[1;31mThe file is NOT in ELF format\x1b[0m");
         return;
     }
-
+    // TODO: FIX
+    // file_contents.parse_program_headers();
     // 0x7f, E, L, F
     if file_contents[0] == 0x7f
         && file_contents[1] == 0x45
