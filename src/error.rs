@@ -12,7 +12,7 @@ pub enum ParseError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
+        match self {
             Self::BadMagic => {
                 write!(f, "\x1b[1;31mError: Bad magic\x1b[0m")
             }

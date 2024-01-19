@@ -1,7 +1,14 @@
+#[derive(Debug, Clone, Copy)]
+pub enum Endian {
+    Big,
+    Little,
+}
+
 // byte sequence to integer
 pub trait ValidNums {
     fn from_big_bytes(seq: &[u8]) -> Self;
     fn from_little_bytes(seq: &[u8]) -> Self;
+    fn from_bytes(en: Endian, seq: &[u8]) -> Self;
 }
 
 impl ValidNums for u16 {
@@ -11,6 +18,12 @@ impl ValidNums for u16 {
     fn from_little_bytes(seq: &[u8]) -> Self {
         Self::from_le_bytes(seq[..2 as usize].try_into().unwrap())
     }
+    fn from_bytes(en: Endian, seq: &[u8]) -> Self {
+        match en {
+            Endian::Big => Self::from_big_bytes(seq[..2 as usize].try_into().unwrap()),
+            Endian::Little => Self::from_le_bytes(seq[..2 as usize].try_into().unwrap()),
+        }
+    }
 }
 impl ValidNums for u32 {
     fn from_big_bytes(seq: &[u8]) -> Self {
@@ -19,19 +32,33 @@ impl ValidNums for u32 {
     fn from_little_bytes(seq: &[u8]) -> Self {
         Self::from_le_bytes(seq[..4 as usize].try_into().unwrap())
     }
+    fn from_bytes(en: Endian, seq: &[u8]) -> Self {
+        match en {
+            Endian::Big => Self::from_big_bytes(seq[..4 as usize].try_into().unwrap()),
+            Endian::Little => Self::from_le_bytes(seq[..4 as usize].try_into().unwrap()),
+        }
+    }
 }
 impl ValidNums for u64 {
     fn from_big_bytes(seq: &[u8]) -> Self {
+        let len = if seq.len() > 8 { 8 as usize } else { seq.len() };
         if seq.len() == 4 {
-            return u32::from_be_bytes(seq[..seq.len()].try_into().unwrap()) as u64;
+            return u32::from_be_bytes(seq[..len].try_into().unwrap()) as u64;
         }
-        Self::from_be_bytes(seq[..seq.len()].try_into().unwrap())
+        Self::from_be_bytes(seq[..len].try_into().unwrap())
     }
     fn from_little_bytes(seq: &[u8]) -> Self {
-        if seq.len() == 4 {
-            return u32::from_le_bytes(seq[..seq.len()].try_into().unwrap()) as u64;
+        let len = if seq.len() > 8 { 8 as usize } else { seq.len() };
+        if len == 4 {
+            return u32::from_le_bytes(seq[..len].try_into().unwrap()) as u64;
         }
-        Self::from_le_bytes(seq[..seq.len()].try_into().unwrap())
+        Self::from_le_bytes(seq[..len].try_into().unwrap())
+    }
+    fn from_bytes(en: Endian, seq: &[u8]) -> Self {
+        match en {
+            Endian::Big => Self::from_big_bytes(seq[..seq.len() as usize].try_into().unwrap()),
+            Endian::Little => Self::from_le_bytes(seq[..seq.len() as usize].try_into().unwrap()),
+        }
     }
 }
 

@@ -1,12 +1,12 @@
 use crate::error::ParseError;
-use crate::utils::ValidNums;
+use crate::utils::{Endian, ValidNums};
 use std::{
     fs::File,
     io::{BufReader, Read},
     path::PathBuf,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ELFHeader {
     // 32 or 64 bit
     pub ei_class: u8,
@@ -90,113 +90,71 @@ impl<'a> ELFParser<'a> {
         } else {
             return Err(ParseError::BadMagic);
         }
-        let elf_header = ELFHeader::default();
+        let _elf_header = ELFHeader::default();
         return Err(ParseError::BadMagic);
     }
 }
 
 impl ELFHeader {
     // parse the header
-    fn parse(header: &mut Self, contents: &[u8]) -> Result<usize, ParseError> {
-        let mut step = 0;
+    pub fn parse(&mut self, contents: &[u8]) -> Result<usize, ParseError> {
+        let step;
         let mut cursor = 4;
+        let end;
         if contents[cursor] == 1 {
-            header.ei_class = 1;
+            self.ei_class = 1;
             step = 4;
         } else {
-            header.ei_class = 2;
+            self.ei_class = 2;
             step = 8;
         }
         cursor += 1;
         if contents[cursor] == 1 {
-            header.ei_data = 1;
+            self.ei_data = 1;
+            end = Endian::Little;
         } else if contents[cursor] == 2 {
-            header.ei_data = 2;
+            self.ei_data = 2;
+            end = Endian::Big;
         } else {
             return Err(ParseError::UnsupportedEndianess);
         }
         cursor += 1;
-        header.ei_version = contents[cursor];
+        self.ei_version = contents[cursor];
         cursor += 1;
-        header.ei_osabi = contents[cursor];
+        self.ei_osabi = contents[cursor];
         cursor += 1;
-        header.ei_abiversion = contents[cursor];
+        self.ei_abiversion = contents[cursor];
         cursor = 16;
-        let obj_type = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..cursor + 2])
-        } else {
-            u16::from_little_bytes(&contents[cursor..cursor + 2])
-        };
-        header.e_type = obj_type;
+
+        let obj_type = u16::from_bytes(end, &contents[cursor..cursor + 2]);
+
+        self.e_type = obj_type;
         cursor += 2;
-        let machine_type = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..cursor + 2])
-        } else {
-            u16::from_little_bytes(&contents[cursor..cursor + 2])
-        };
-        header.e_machine = machine_type;
-        cursor += 2;
+        let machine_type = u16::from_bytes(end, &contents[cursor..cursor + 2]);
+        self.e_machine = machine_type;
+        // cursor += 2;
         let version = contents[20] | contents[23];
+        self.e_version = version;
         let mut cursor = 24_usize;
-        header.e_entry = if header.ei_data == 2 {
-            u64::from_big_bytes(&contents[cursor..(cursor + step)])
-        } else {
-            u64::from_little_bytes(&contents[cursor..(cursor + step)])
-        };
+        self.e_entry = u64::from_bytes(end, &contents[cursor..(cursor + step)]);
         cursor += step;
-        header.e_phoff = if header.ei_data == 2 {
-            u64::from_big_bytes(&contents[cursor..(cursor + step)])
-        } else {
-            u64::from_little_bytes(&contents[cursor..(cursor + step)])
-        };
+        self.e_phoff = u64::from_bytes(end, &contents[cursor..(cursor + step)]);
         cursor += step;
-        header.e_shoff = if header.ei_data == 2 {
-            u64::from_big_bytes(&contents[cursor..(cursor + step)])
-        } else {
-            u64::from_little_bytes(&contents[cursor..(cursor + step)])
-        };
+        self.e_shoff = u64::from_bytes(end, &contents[cursor..(cursor + step)]);
         cursor += step;
-        header.e_flags = if header.ei_data == 2 {
-            u32::from_big_bytes(&contents[cursor..(cursor + 4)])
-        } else {
-            u32::from_little_bytes(&contents[cursor..(cursor + 4)])
-        };
+        self.e_flags = u32::from_bytes(end, &contents[cursor..(cursor + 4)]);
         cursor += 4;
-        header.e_ehsize = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_ehsize = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         cursor += 2;
-        header.e_phentsize = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_phentsize = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         cursor += 2;
-        header.e_phnum = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_phnum = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         cursor += 2;
-        header.e_shentsize = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_shentsize = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         cursor += 2;
-        header.e_shnum = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_shnum = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         cursor += 2;
-        header.e_shstrndx = if header.ei_data == 2 {
-            u16::from_big_bytes(&contents[cursor..(cursor + 2)])
-        } else {
-            u16::from_little_bytes(&contents[cursor..(cursor + 2)])
-        };
+        self.e_shstrndx = u16::from_bytes(end, &contents[cursor..(cursor + 2)]);
         Ok(cursor + 2)
     }
 }
@@ -211,7 +169,9 @@ pub trait ELFParserExt {
 
 impl ELFParserExt for [u8] {
     fn parse_elf_header(&self) -> ELFHeader {
-        todo!()
+        let mut elf_head = ELFHeader::default();
+        _ = elf_head.parse(&self);
+        elf_head
     }
 
     fn parse_program_headers(&self) -> Option<Vec<Pheader>> {
