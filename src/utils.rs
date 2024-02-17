@@ -1,6 +1,7 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Endian {
     Big,
+    #[default]
     Little,
 }
 
