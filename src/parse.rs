@@ -68,6 +68,8 @@ pub struct Pheader {
     pub p_align: u64,
 }
 
+impl Pheader {}
+
 pub struct ELFParser<'a> {
     cursor: u32,
     file_contents: &'a [u8],
@@ -321,7 +323,8 @@ pub trait ELFParserExt {
 impl ELFParserExt for [u8] {
     fn parse_elf_header(&self) -> ELFHeader {
         let mut elf_head = ELFHeader::default();
-        self.cursor = elf_head.parse(&self);
+        // IMP: fix this
+        let _cursor = elf_head.parse(&self);
         elf_head
     }
 

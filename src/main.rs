@@ -4,6 +4,8 @@ use std::{
     io::{BufReader, Read},
 };
 
+// https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
+
 mod utils;
 use utils::ValidNums;
 mod parse;
