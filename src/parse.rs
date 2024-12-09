@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::error::ParseError;
 use crate::utils::{Endian, ValidNums};
 use std::{
