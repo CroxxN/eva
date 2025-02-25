@@ -8,3 +8,4 @@
 - [ ] Parse section header
 - [ ] Parse program header
 - [ ] Complete disassembler
+- [ ] Linker
